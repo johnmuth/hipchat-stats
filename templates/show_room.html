@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+{% block body %}
+  <h2>Stats for room '{{ room.name }}'</h2>
+  <div class="phrases">
+      <h3>Most frequently-used phrases</h3>
+      <table>
+          <thead>
+              <tr>
+                  <th>phrase</th>
+                  <th>uses</th>
+              </tr>
+          </thead>
+          {% for phrase,count in phrases %}
+            <tr><td><a href="/room/{{room.id}}/messages?q={{' '.join(phrase)}}">{{' '.join(phrase)}}</a></td><td>{{count}}</td></tr>
+          {% endfor %}
+      </table>
+  </div>
+{% endblock %}
