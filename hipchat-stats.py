@@ -31,14 +31,19 @@ app.config.update(dict(
 @app.route('/')
 def show_rooms():
     rooms = get_hc().rooms()['items']
-    return render_template('show_rooms.html', rooms=sorted(rooms, key=lambda room: room['name']))
+    return render_template('rooms.html', rooms=sorted(rooms, key=lambda room: room['name']))
 
 @app.route('/room/<int:room_id>')
 def show_room(room_id):
     room = get_hc().get_room(room_id)
+    return render_template('room.html', room=room)
+
+@app.route('/room/<int:room_id>/significant-phrases')
+def show_significant_phrases(room_id):
+    room = get_hc().get_room(room_id)
     messages = get_messages(room_id)
     phrases = get_phrases(messages)
-    return render_template('show_room.html', room=room, phrases=sorted(phrases.items(), key=operator.itemgetter(1), reverse=True))
+    return render_template('significant-phrases.html', room=room, phrases=sorted(phrases.items(), key=operator.itemgetter(1), reverse=True))
 
 @app.route('/room/<int:room_id>/messages')
 def show_room_messages(room_id):
@@ -46,7 +51,7 @@ def show_room_messages(room_id):
     messages = get_message_objs(room_id)
     query = request.args.get('q')
     filtered_messages = [ message for message in messages if query in normalize_message(message) ]
-    return render_template('show_messages.html', room=room, messages=filtered_messages)
+    return render_template('messages.html', room=room, messages=filtered_messages, phrase=query)
 
 def get_hc():
     return hypchat.HypChat(os.getenv('HIPCHAT_API_KEY', 'HIPCHAT_API_KEY env var not set'))

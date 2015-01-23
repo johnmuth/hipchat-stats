@@ -1,0 +1,7 @@
+{% extends "layout.html" %}
+{% block body %}
+	<h2>Interesting statistics for room '{{ room.name }}'</h2>
+	<ul>
+    	<li><a href="{{ '/room/{0}/significant-phrases'.format(room.id) }}">Significant phrases</a></li>
+    </ul>
+{% endblock %}
