@@ -19,6 +19,7 @@ import numpy as np
 from scipy.stats import binom
 import string
 import unicodedata
+import pprint
 import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -36,7 +37,9 @@ def show_rooms():
 @app.route('/room/<int:room_id>')
 def show_room(room_id):
     room = get_hc().get_room(room_id)
-    return render_template('room.html', room=room)
+    stats = room.statistics.self()
+    pprint.pprint(stats.last_active)
+    return render_template('room.html', room=room, messages_sent=stats.messages_sent, last_active=stats.last_active.encode('utf-8'))
 
 @app.route('/room/<int:room_id>/significant-phrases')
 def show_significant_phrases(room_id):
@@ -64,7 +67,7 @@ def get_messages(room_id):
 
 def get_message_objs(room_id):
     room = get_hc().get_room(room_id)
-    return room.history(datetime.datetime.utcnow(), maxResults=1000).contents()
+    return room.history(maxResults=1000).contents()
 
 
 def normalize_message(message):
