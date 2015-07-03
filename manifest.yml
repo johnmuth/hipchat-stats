@@ -1,0 +1,7 @@
+---
+applications:
+-   name: hipchat-stats
+    memory: 512M
+    buildpack: git://github.com/ihuston/python-conda-buildpack.git
+    env:
+        HIPCHAT_API_KEY: btaQrldLD9qbH0Fe4I50ik7TIhtObr66QuUZcxC5

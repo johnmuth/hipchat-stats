@@ -140,6 +140,10 @@ def get_phrases(messages):
   return allPhrasesAndCounts
 
 if __name__ == "__main__":
-    app.run()
+    try:
+        nltk.word_tokenize("hello world")
+    except LookupError as e:
+        nltk.download('punkt')
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', '5000')))
 
 
