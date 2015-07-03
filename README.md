@@ -25,6 +25,7 @@ $ python hipchat-stats.py
 ## TODO
 
   * Analyse more than most recent 1000 messages
+  * when showing messages that contained a phrase, show more context, maybe one message before and after
   * do better at eliminating common but uninteresting phrases like 'I am'
   * trends
 
