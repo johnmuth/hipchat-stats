@@ -21,3 +21,10 @@ $ python hipchat-stats.py
  * Running on http://127.0.0.1:5000/
  * Restarting with reloader
 ```
+
+## TODO
+
+  * Analyse more than most recent 1000 messages
+  * do better at eliminating common but uninteresting phrases like 'I am'
+  * trends
+
