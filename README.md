@@ -8,24 +8,35 @@ hipchat-stats shows you the most frequently occurring phrases in a HipChat chatr
 
 It does a bit of statistical analysis to discard frequently occurring but insignificant phrases, e.g., "I am". https://en.wikipedia.org/wiki/Likelihood-ratio_test
 
-## Running
+## Install dependencies
+
+```
+$ pip install -r requirements.txt
+```
+
+## Run it
 
 You must set environment variable HIPCHAT_API_KEY
 
-Run 
-
 ```
-$ python setup.py
 $ export HIPCHAT_API_KEY=xxx-my-hipchat-api-key
-$ python hipchat-stats.py
+$ ./hipchat-stats.py
  * Running on http://127.0.0.1:5000/
  * Restarting with reloader
 ```
 
+## Tests
+
+```
+$ pip install -r test_requirements.txt
+$ nosetests
+```
+
+
 ## TODO
 
-  * Analyse more than most recent 1000 messages
-  * when showing messages that contained a phrase, show more context, maybe one message before and after
-  * do better at eliminating common but uninteresting phrases like 'I am'
-  * trends
+  * Do better at eliminating common but uninteresting phrases like 'I am'.
+  * Fetch and analyse more than most recent 1000 messages.
+  * When showing messages that contained a phrase, show more context, maybe one message before and after.
+  * Analyse trends: phrase usage over time.
 
