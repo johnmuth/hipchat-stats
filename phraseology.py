@@ -1,83 +1,124 @@
 from __future__ import division
-import operator
+import re
+from urlparse import urlparse
+from itertools import islice
 import nltk
 import numpy as np
-import string
 from scipy.stats import binom
+from nltk.tokenize import WhitespaceTokenizer
 
-def normalize_message(message):
-    words = get_words(message['message'].encode('utf-8'))
-    words = filter(lambda x: is_valid(x), words)
-    return ' '.join(words)
+def get_phrases(messages, min_phrase_size, max_phrase_size):
+  wordlists = {}
+  unigram_freq_dist = nltk.FreqDist()
+  for message in messages:
+    wordlist = get_words(message['message'])
+    for word in wordlist:
+        unigram_freq_dist[word] += 1
+    wordlists[message['id']] = wordlist
+  phrases = nltk.defaultdict(float)
+  previous_freq_dist = None
+  all_phrases_and_counts = {}
+  ngrams_messageids = {}
+  for i in range(2, max_phrase_size + 1):
+    ngram_freq_dist = nltk.FreqDist()
+    for id, wordlist in wordlists.items():
+      next_ngrams = nltk.ngrams(wordlist, i)
+      next_ngrams = filter(lambda x: is_likely_ngram(x, phrases), next_ngrams)
+      for ngram in next_ngrams:
+        ngram_freq_dist[ngram] += 1
+        if ngram not in ngrams_messageids:
+          ngrams_messageids[ngram]={}
+        ngrams_messageids[ngram][id]=1
+    for k, v in ngram_freq_dist.iteritems():
+      if v > 1:
+        occurrences_word1 = unigram_freq_dist[k[0]] if previous_freq_dist == None else previous_freq_dist[k[:-1]]
+        occurrences_word2 = unigram_freq_dist[k[1]] if previous_freq_dist == None else unigram_freq_dist[k[len(k) - 1]]
+        occurrences_word1_word2 = ngram_freq_dist[k]
+        total_occurrences = unigram_freq_dist.N() if previous_freq_dist == None else previous_freq_dist.N()
+        klog_likelihood_ratio = log_likelihood_ratio(occurrences_word1, occurrences_word2, occurrences_word1_word2, total_occurrences)
+        phrases[k] = klog_likelihood_ratio
 
-def is_valid(word):
-  if word.startswith("#"):
-    return False # no hashtag
-  else:
-    vword = word.translate(string.maketrans("", ""), string.punctuation)
-    return len(vword) == len(word)
+    # restrict to log_likelihood_ratio > 0, i.e., the words occur together more often than they would by chance
+    likely_phrases = nltk.defaultdict(float)
+    likely_phrases.update([(k, v) for (k, v)
+      in phrases.iteritems() if len(k) == i and v > 0])
 
-def llr(c1, c2, c12, n):
-  p0 = c2 / n
-  p10 = c12 / n
-  p11 = (c2 - c12) / n
-  probs = np.matrix([
-    [binom(c1, p0).logpmf(c12), binom(n - c1, p0).logpmf(c2 - c12)],
-    [binom(c1, p10).logpmf(c12), binom(n - c1, p11).logpmf(c2 - c12)]])
-  return np.sum(probs[1, :]) - np.sum(probs[0, :])
+    for k, v in likely_phrases.items():
+      if i >= min_phrase_size:
+        all_phrases_and_counts[k] = ngram_freq_dist[k]
+    previous_freq_dist = ngram_freq_dist
+  final_phrases = []
+  for phrase, count in sorted(remove_redundant_subphrases(all_phrases_and_counts).items(), key=lambda phrase_count: int(phrase_count[1]), reverse=True):
+    final_phrases.append({'phrase':" ".join(phrase), 'count':count, 'message_ids': ngrams_messageids[phrase].keys()})
+  return final_phrases
 
 def is_likely_ngram(ngram, phrases):
   if len(ngram) == 2:
     return True
-  prevGram = ngram[:-1]
-  return phrases.has_key(prevGram)
+  return phrases.has_key(ngram[:-1])
 
 def get_words(message):
-    return nltk.word_tokenize(message.strip().lower())
+  words = WhitespaceTokenizer().tokenize(message.strip().lower())
+  # truncate urls
+  words = map(lambda word:truncate_if_url(word), words)
+  # remove trailing punctuation
+  return map(lambda word:re.sub(r'\W+$', '', word), words)
 
-def get_phrases(messages, min_phrase_size, max_phrase_size):
-  lines = []
-  unigramFD = nltk.FreqDist()
-  for message in messages:
-    words = get_words(message)
-    words = filter(lambda x: is_valid(x), words)
-    for word in words:
-        unigramFD[word] += 1
-    lines.append(words)
-  phrases = nltk.defaultdict(float)
-  prevGramFD = None
-  allPhrasesAndCounts = {}
-  for i in range(min_phrase_size, max_phrase_size):
-    ngramFD = nltk.FreqDist()
-    for words in lines:
-      nextGrams = nltk.ngrams(words, i)
-      nextGrams = filter(lambda x: is_likely_ngram(x, phrases), nextGrams)
-      for nextGram in nextGrams:
-        ngramFD[nextGram] += 1
-    for k, v in ngramFD.iteritems():
-      if v > 1:
-        c1 = unigramFD[k[0]] if prevGramFD == None else prevGramFD[k[:-1]]
-        c2 = unigramFD[k[1]] if prevGramFD == None else unigramFD[k[len(k) - 1]]
-        c12 = ngramFD[k]
-        n = unigramFD.N() if prevGramFD == None else prevGramFD.N()
-        kllr = llr(c1, c2, c12, n)
-        phrases[k] = kllr
+def remove_redundant_subphrases(phrases):
+  deduped_phrases = {}
+  seen_phrases = {}
+  # sort by phrase length, longest first
+  for phrase, count in sorted(phrases.items(), key=lambda phrase: len(phrase[0]), reverse=True):
+    if phrase not in seen_phrases:
+      deduped_phrases[phrase] = count
+    for i in range(len(phrase) - 1, 0, -1):
+      for subphrase in window(phrase, i):
+        seen_phrases[subphrase] = 1
+        if subphrase in phrases:
+          subphrase_count = phrases[subphrase]
+          if subphrase_count != count:
+            deduped_phrases[subphrase] = subphrase_count
+  return deduped_phrases
 
-    # only consider ngrams where LLR > 0, ie P(H1) > P(H0)
-    likelyPhrases = nltk.defaultdict(float)
-    likelyPhrases.update([(k, v) for (k, v)
-      in phrases.iteritems() if len(k) == i and v > 0])
 
-    sortedPhrases = sorted(likelyPhrases.items(),
-      key=operator.itemgetter(1), reverse=True)
-    for k, v in sortedPhrases:
-      allPhrasesAndCounts[k] = ngramFD[k]
-    prevGramFD = ngramFD
+def window(seq, n=2):
+  "Returns a sliding window (of width n) over data from the iterable"
+  "   s -> (s0,s1,...s[n-1]), (s1,s2,...,sn), ...                   "
+  it = iter(seq)
+  result = tuple(islice(it, n))
+  if len(result) == n:
+    yield result
+  for elem in it:
+    result = result[1:] + (elem,)
+    yield result
 
-  return allPhrasesAndCounts
+def log_likelihood_ratio(occurrences_word1, occurrences_word2, occurrences_word1_word2, occurrences_all):
+  p2 = occurrences_word2 / occurrences_all
+  p12 = occurrences_word1_word2 / occurrences_all
+  p2not12 = (occurrences_word2 - occurrences_word1_word2) / occurrences_all
+  logpmf00 = binom(occurrences_word1, p2).logpmf(occurrences_word1_word2)
+  logpmf01 = binom(occurrences_all - occurrences_word1, p2).logpmf(occurrences_word2 - occurrences_word1_word2)
+  logpmf10 = binom(occurrences_word1, p12).logpmf(occurrences_word1_word2)
+  logpmf11 = binom(occurrences_all - occurrences_word1, p2not12).logpmf(occurrences_word2 - occurrences_word1_word2)
+  probs = np.matrix([
+    [logpmf00, logpmf01],
+    [logpmf10, logpmf11]])
+  return np.sum(probs[1, :]) - np.sum(probs[0, :])
 
 def nltk_init():
     try:
         nltk.word_tokenize("hello world")
     except LookupError as e:
         nltk.download('punkt')
+
+def normalize_message(message):
+  words = get_words(message['message'].encode('utf-8'))
+  return ' '.join(words)
+
+def truncate_if_url(input):
+  result = urlparse(input)
+  if result.scheme == '':
+    return input
+  else:
+    return result.scheme + '://' + result.netloc
+

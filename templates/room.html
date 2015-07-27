@@ -2,8 +2,8 @@
 {% block body %}
 	<h2>'{{ room.name }}' statistics </h2>
 	<ul>
-		<li>last active: {{last_active}}</li>
-		<li>message count: {{messages_sent}}</li>		
+		<li>last active: {{room.last_active}}</li>
+		<li>message count: {{room.messages_sent}}</li>
     	<li><a href="{{ '/room/{0}/significant-phrases'.format(room.id) }}">Significant phrases</a></li>
     </ul>
 {% endblock %}

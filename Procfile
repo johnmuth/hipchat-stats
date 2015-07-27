@@ -1,1 +1,1 @@
-web: python hipchat-stats.py
+web: python hipchat-stats-webapp.py

@@ -4,39 +4,30 @@ A web app for stats about HipChat chats.
 
 ## Overview
 
-hipchat-stats shows you the most frequently occurring phrases in a HipChat chatroom history.
+hipchat-stats finds frequently occurring 'interesting' phrases in a HipChat chatroom history.
 
-It does a bit of statistical analysis to discard frequently occurring but insignificant phrases, e.g., "I am". https://en.wikipedia.org/wiki/Likelihood-ratio_test
+It does a bit of statistical analysis to identify interesting phrases, https://en.wikipedia.org/wiki/Likelihood-ratio_test
 
-## Install dependencies
+## Running
+
+You must set environment variables HIPCHAT_API_KEY and REDIS_HOST
+
+Run 
 
 ```
 $ pip install -r requirements.txt
-```
-
-## Run it
-
-You must set environment variable HIPCHAT_API_KEY
-
-```
-$ export HIPCHAT_API_KEY=xxx-my-hipchat-api-key
-$ ./hipchat-stats.py
+$ pip install -r conda_requirements.txt
+$ export HIPCHAT_API_KEY=hipchat-api-key
+$ export REDIS_HOST=redis-hostname
+$ ./hipchat-stats-webapp.py
  * Running on http://127.0.0.1:5000/
  * Restarting with reloader
 ```
 
-## Tests
-
-```
-$ pip install -r test_requirements.txt
-$ nosetests
-```
-
-
 ## TODO
 
-  * Do better at eliminating common but uninteresting phrases like 'I am'.
-  * Fetch and analyse more than most recent 1000 messages.
-  * When showing messages that contained a phrase, show more context, maybe one message before and after.
-  * Analyse trends: phrase usage over time.
-
+  * Analyse more than most recent 1000 messages
+  * when displaying messages that contained a phrase, also display one or two of the messages immediately before and after, for context
+  * eliminate common but uninteresting phrases like 'I am'
+    * phrases consisting only of stopwords, pronouns, ...?
+  * identify trends
