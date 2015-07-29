@@ -7,7 +7,7 @@ import numpy as np
 from scipy.stats import binom
 from nltk.tokenize import WhitespaceTokenizer
 
-def get_phrases(messages, min_phrase_size, max_phrase_size):
+def get_phrases(messages, min_phrase_size, max_phrase_size, min_llr=0):
   wordlists = {}
   unigram_freq_dist = nltk.FreqDist()
   for message in messages:
@@ -36,12 +36,18 @@ def get_phrases(messages, min_phrase_size, max_phrase_size):
         occurrences_word1_word2 = ngram_freq_dist[k]
         total_occurrences = unigram_freq_dist.N() if previous_freq_dist == None else previous_freq_dist.N()
         klog_likelihood_ratio = log_likelihood_ratio(occurrences_word1, occurrences_word2, occurrences_word1_word2, total_occurrences)
+        # print 'k=',k
+        # print 'occurrences_word1=',occurrences_word1
+        # print 'occurrences_word2=',occurrences_word2
+        # print 'occurrences_word1_word2=',occurrences_word1_word2
+        # print 'total_occurrences=',total_occurrences
+        # print 'klog_likelihood_ratio=',klog_likelihood_ratio
         phrases[k] = klog_likelihood_ratio
 
     # restrict to log_likelihood_ratio > 0, i.e., the words occur together more often than they would by chance
     likely_phrases = nltk.defaultdict(float)
     likely_phrases.update([(k, v) for (k, v)
-      in phrases.iteritems() if len(k) == i and v > 0])
+      in phrases.iteritems() if len(k) == i and v > min_llr])
 
     for k, v in likely_phrases.items():
       if i >= min_phrase_size:
@@ -49,7 +55,7 @@ def get_phrases(messages, min_phrase_size, max_phrase_size):
     previous_freq_dist = ngram_freq_dist
   final_phrases = []
   for phrase, count in sorted(remove_redundant_subphrases(all_phrases_and_counts).items(), key=lambda phrase_count: int(phrase_count[1]), reverse=True):
-    final_phrases.append({'phrase':" ".join(phrase), 'count':count, 'message_ids': ngrams_messageids[phrase].keys()})
+    final_phrases.append({'phrase':" ".join(phrase), 'count':count, 'message_ids': ngrams_messageids[phrase].keys(), 'llr':phrases[phrase]})
   return final_phrases
 
 def is_likely_ngram(ngram, phrases):

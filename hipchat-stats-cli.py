@@ -24,6 +24,7 @@ Commands are:
 
    message_get          Get message from redis
    messages_get         Get messages for a chatroom, from hipchat
+   messages_get_phrases Extract phrases from chatroom messages file
 
 ''')
         parser.add_argument('command', help='Command to run')
@@ -38,7 +39,7 @@ Commands are:
         updater.room_list_update()
 
     def room_list_get(self):
-        print json.dumps(redisclient.get_rooms())
+        print json.dumps(redisclient.get_rooms(), sort_keys=True,indent=4)
 
     def room_phrases_update(self):
         parser = argparse.ArgumentParser(description='Update phrases for room')
@@ -52,38 +53,41 @@ Commands are:
         parser.add_argument('--date', required=False, help='Get phrases for a specific date.')
         args = parser.parse_args(sys.argv[2:])
         phrases = redisclient.get_phrases_for_room(args.room_id) if args.date is None else redisclient.get_phrases_for_room_date(args.room_id, args.date)
-        print json.dumps( phrases )
+        print json.dumps( phrases , sort_keys=True,indent=4)
 
     def room_dates_list(self):
         parser = argparse.ArgumentParser(description='List dates for which room has phrases')
         parser.add_argument('--room_id', required=True, help='Id of room.')
         args = parser.parse_args(sys.argv[2:])
-        print json.dumps( redisclient.get_dates_for_room(args.room_id))
+        print json.dumps( redisclient.get_dates_for_room(args.room_id), sort_keys=True,indent=4)
 
     def message_get(self):
         parser = argparse.ArgumentParser(description='Get message from redis')
         parser.add_argument('--message_id', required=True, help='Id of message.')
         args = parser.parse_args(sys.argv[2:])
         message = redisclient.get_message(args.message_id)
-        print json.dumps( message )
+        print json.dumps( message, sort_keys=True,indent=4 )
 
     def messages_get(self):
         parser = argparse.ArgumentParser(description='Get messages from a chatroom in hipchat')
         parser.add_argument('--room_id', required=True, help='Id of room.')
         args = parser.parse_args(sys.argv[2:])
         messages = hipchat.get_messages(args.room_id)
-        print json.dumps( messages )
+        print json.dumps( messages, sort_keys=True,indent=4 )
 
     def messages_get_phrases(self):
         parser = argparse.ArgumentParser(description='Get phrases from a messages json file')
         parser.add_argument('--file', required=True, help='file containing messages json')
+        parser.add_argument('--min_phrase_size', required=True, help='minimum number of words in a phrase')
+        parser.add_argument('--max_phrase_size', required=True, help='maximum number of words in a phrase')
+        parser.add_argument('--min_llr', required=True, help='minimum llr')
         args = parser.parse_args(sys.argv[2:])
         with open(args.file) as data_file:
             messages = json.load(data_file)
 
-        phrases = phraseology.get_phrases(messages)
+        phrases = phraseology.get_phrases(messages, int(args.min_phrase_size), int(args.max_phrase_size), int(args.min_llr))
 
-        print json.dumps( phrases )
+        print json.dumps( phrases, sort_keys=True,indent=4 )
 
 
 if __name__ == '__main__':

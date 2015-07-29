@@ -23,7 +23,7 @@ def get_message_objs(room_id, maxResults=1000):
 
 def get_history(room_id, date):
     messages = []
-    for item in hc().get_room(room_id).history(date=date, maxResults=1000).contents():
+    for item in hc().get_room(room_id).history(date='recent', maxResults=1000).contents():
         messages.append({'id':item['id'], 'message':item['message'], 'date':item['date'], 'from': item['from']})
     return messages
 
